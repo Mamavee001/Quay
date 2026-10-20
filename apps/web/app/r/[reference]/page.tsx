@@ -1,15 +1,6 @@
 import { api, type PublicReceipt } from "../../../lib/api";
 import { ReceiptClient } from "./ReceiptClient";
-
-function explorerUrl(network: string, hash: string): string {
-  const base = network === "public" ? "https://stellar.expert/explorer/public" : "https://stellar.expert/explorer/testnet";
-  return `${base}/tx/${hash}`;
-}
-
-function addressUrl(network: string, addr: string): string {
-  const base = network === "public" ? "https://stellar.expert/explorer/public" : "https://stellar.expert/explorer/testnet";
-  return `${base}/account/${addr}`;
-}
+import { explorerUrl, addressUrl, networkLabel, getStellarNetwork } from "../../../lib/explorer";
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
@@ -38,7 +29,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ refere
     );
   }
 
-  const network = (process.env.STELLAR_NETWORK ?? "testnet") === "public" ? "public" : "testnet";
+  const network = getStellarNetwork();
 
   return (
     <main className="shell shell--receipt">
@@ -78,7 +69,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ refere
           <div className="receipt-row">
             <span className="receipt-label">Transaction</span>
             <a
-              href={explorerUrl(network, receipt.txHash)}
+              href={explorerUrl(receipt.txHash, network)}
               target="_blank"
               rel="noopener noreferrer"
               className="mono explorer-link"
@@ -92,7 +83,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ refere
           <div className="receipt-row">
             <span className="receipt-label">From</span>
             <a
-              href={addressUrl(network, receipt.payer)}
+              href={addressUrl(receipt.payer, network)}
               target="_blank"
               rel="noopener noreferrer"
               className="mono explorer-link"
@@ -105,7 +96,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ refere
         <div className="receipt-divider" />
 
         <div className="receipt-footer-meta">
-          <span className="muted">Settled on Stellar {network === "public" ? "Mainnet" : "Testnet"}</span>
+          <span className="muted">Settled on Stellar {networkLabel(network)}</span>
           <span className="muted">{formatDate(receipt.updatedAt)}</span>
         </div>
       </section>

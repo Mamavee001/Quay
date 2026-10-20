@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api, type WebhookDelivery, type PaymentLink, type OfframpPollStatus } from "../../../lib/api";
 import { TimelineClient, PendingTransferAction } from "./TimelineClient";
+import { explorerUrl, addressUrl, getStellarNetwork } from "../../../lib/explorer";
 
 interface TimelineEvent {
   id: string;
@@ -120,15 +121,6 @@ function buildTimeline(
   return events.sort((a, b) => a.time - b.time);
 }
 
-function explorerUrl(network: string, hash: string): string {
-  const base = network === "public" ? "https://stellar.expert/explorer/public" : "https://stellar.expert/explorer/testnet";
-  return `${base}/tx/${hash}`;
-}
-
-function addressUrl(network: string, addr: string): string {
-  const base = network === "public" ? "https://stellar.expert/explorer/public" : "https://stellar.expert/explorer/testnet";
-  return `${base}/account/${addr}`;
-}
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
@@ -183,7 +175,7 @@ export default async function LinkDetailPage({ params }: { params: Promise<{ id:
   }
 
   // Determine network from the environment (default to testnet)
-  const network = (process.env.STELLAR_NETWORK ?? "testnet") === "public" ? "public" : "testnet";
+  const network = getStellarNetwork();
 
   const events = buildTimeline(link, deliveries, offrampPoll);
 
@@ -245,7 +237,7 @@ export default async function LinkDetailPage({ params }: { params: Promise<{ id:
                   <div className="tl-event-detail">
                     {ev.type === "paid" || ev.type === "underpaid" ? (
                       <a
-                        href={explorerUrl(network, ev.detail)}
+                        href={explorerUrl(ev.detail, network)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mono explorer-link"
@@ -275,7 +267,7 @@ export default async function LinkDetailPage({ params }: { params: Promise<{ id:
                   <div className="tl-event-detail">
                     <span className="muted">Payer: </span>
                     <a
-                      href={addressUrl(network, ev.meta.payer)}
+                      href={addressUrl(ev.meta.payer, network)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mono explorer-link"
@@ -310,7 +302,7 @@ export default async function LinkDetailPage({ params }: { params: Promise<{ id:
           <div className="tl-dt-row">
             <dt>Destination</dt>
             <dd className="mono">
-              <a href={addressUrl(network, link.destination)} target="_blank" rel="noopener noreferrer" className="explorer-link">
+              <a href={addressUrl(link.destination, network)} target="_blank" rel="noopener noreferrer" className="explorer-link">
                 {link.destination}
               </a>
             </dd>
@@ -319,7 +311,7 @@ export default async function LinkDetailPage({ params }: { params: Promise<{ id:
             <div className="tl-dt-row">
               <dt>Transaction</dt>
               <dd className="mono">
-                <a href={explorerUrl(network, link.txHash)} target="_blank" rel="noopener noreferrer" className="explorer-link">
+                <a href={explorerUrl(link.txHash, network)} target="_blank" rel="noopener noreferrer" className="explorer-link">
                   {link.txHash}
                 </a>
               </dd>
