@@ -223,4 +223,102 @@ describe("CashOutModal interactive step (issue 5.20)", () => {
     });
     expect(onSuccess).toHaveBeenCalledTimes(1);
   });
+
+  it("does not reset poll timer when parent re-renders with fresh onSuccess and honours 30s backoff", async () => {
+    let currentSuccess = vi.fn();
+    root = createRoot(container);
+    act(() => {
+      root!.render(
+        <CashOutModal
+          linkId="lnk_1"
+          linkAmount="10"
+          assetCode="USDC"
+          targetCurrency="NGN"
+          isMock
+          onClose={onClose}
+          onSuccess={currentSuccess}
+        />,
+      );
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await submitForm();
+
+    // Track calls to GET /detail
+    const getDetailCalls = () =>
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call: unknown[]) => String(call[0]).endsWith("/detail"),
+      ).length;
+
+    const initialCalls = getDetailCalls();
+
+    // Re-render repeatedly every 2 seconds with a fresh onSuccess identity
+    for (let i = 0; i < 5; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_000);
+      });
+      currentSuccess = vi.fn();
+      act(() => {
+        root!.render(
+          <CashOutModal
+            linkId="lnk_1"
+            linkAmount="10"
+            assetCode="USDC"
+            targetCurrency="NGN"
+            isMock
+            onClose={onClose}
+            onSuccess={currentSuccess}
+          />,
+        );
+      });
+    }
+
+    // 10 seconds elapsed (at 5s and 10s polls should fire)
+    expect(getDetailCalls()).toBeGreaterThan(initialCalls);
+
+    // Fast-forward past the 2-minute mark (120_000 ms) into the 30s backoff phase
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000);
+    });
+
+    const callsAtBackoff = getDetailCalls();
+
+    // Repeatedly re-render every 3 seconds for 25 seconds (less than 30s backoff)
+    for (let i = 0; i < 8; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3_000);
+      });
+      currentSuccess = vi.fn();
+      act(() => {
+        root!.render(
+          <CashOutModal
+            linkId="lnk_1"
+            linkAmount="10"
+            assetCode="USDC"
+            targetCurrency="NGN"
+            isMock
+            onClose={onClose}
+            onSuccess={currentSuccess}
+          />,
+        );
+      });
+    }
+
+    // Advance remaining time so that full 30s backoff elapses
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+
+    // The 30s poll must have fired despite frequent parent re-renders
+    expect(getDetailCalls()).toBeGreaterThan(callsAtBackoff);
+
+    // When status settles, the latest onSuccess callback is called
+    detailStatus = { offrampStatus: "settled", offrampExternalStatus: "complete" };
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(currentSuccess).toHaveBeenCalledTimes(1);
+  });
 });
