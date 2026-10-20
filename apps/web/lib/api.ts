@@ -214,6 +214,7 @@ export type ApiErrorCode =
   | "unauthorized" // telemetry token rejected
   | "telemetry_not_enabled" // deployment has no TELEMETRY_TOKEN configured
   | "telemetry_error" // any other telemetry-route failure
+  | "rate_limited" // 429: too many requests
   | "anchor_unavailable" // 503: the seller's anchor is down or its circuit breaker is open
   | "offramp_disabled" // 501: this deployment has no off-ramp configured
   | "quote_expired" // 409 `quote_expired: <detail>`: the anchor quote lapsed before use
@@ -243,6 +244,9 @@ const BY_CODE: Record<string, ApiErrorCode> = {
   anchor_auth_required: "anchor_auth_required",
   destination_cannot_receive: "destination_cannot_receive",
   payment_rejected: "payment_rejected",
+  consent_required: "consent_required",
+  unauthorized: "unauthorized",
+  rate_limited: "rate_limited",
 };
 
 /**
@@ -342,6 +346,10 @@ export function describeError(err: CheckoutError): string {
       return "The anchor rejected the sign-in challenge. Please try again.";
     case "consent_required":
       return "You need to approve sharing these identity fields with the anchor before submitting.";
+    case "unauthorized":
+      return "Your session has expired or is invalid. Please sign in again.";
+    case "rate_limited":
+      return "Too many requests. Please slow down and try again in a moment.";
     default:
       return "An unexpected error occurred. Please try again.";
   }
