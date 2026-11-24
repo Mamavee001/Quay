@@ -13,7 +13,7 @@
  *    ledger. All-time totals are exact.
  */
 
-import type { PaymentLink } from "./api";
+import type { InvoiceStatus, PaymentLink } from "./api";
 
 /** Statuses where the buyer has paid in full, so the money is the seller's. */
 export const PAID_STATUSES: ReadonlySet<string> = new Set([
@@ -222,6 +222,64 @@ export function filterCounts(links: Pick<PaymentLink, "status">[]): Record<Payme
     }
   }
   return counts;
+}
+
+// ── Filters for the Invoices page (issue 5.54) ──────────────────────────────
+
+export type InvoiceFilter = "all" | "draft" | "open" | "overdue" | "paid" | "void";
+
+export const INVOICE_FILTERS: InvoiceFilter[] = ["all", "draft", "open", "overdue", "paid", "void"];
+
+export const INVOICE_FILTER_LABEL: Record<InvoiceFilter, string> = {
+  all: "All",
+  draft: "Draft",
+  open: "Open",
+  overdue: "Overdue",
+  paid: "Paid",
+  void: "Void",
+};
+
+export function matchesInvoiceFilter(
+  invoice: { status: InvoiceStatus },
+  filter: InvoiceFilter,
+): boolean {
+  if (filter === "all") return true;
+  return invoice.status === filter;
+}
+
+export function invoiceFilterCounts(
+  invoices: { status: InvoiceStatus }[],
+): Record<InvoiceFilter, number> {
+  const counts: Record<InvoiceFilter, number> = {
+    all: 0,
+    draft: 0,
+    open: 0,
+    overdue: 0,
+    paid: 0,
+    void: 0,
+  };
+  for (const inv of invoices) {
+    counts.all += 1;
+    if (inv.status in counts) {
+      counts[inv.status as InvoiceFilter] += 1;
+    }
+  }
+  return counts;
+}
+
+/**
+ * Returns how many days past due an invoice is. If due in future or now, returns 0.
+ */
+export function daysOverdue(dueAt: number, now: number = Date.now()): number {
+  if (!dueAt || dueAt >= now) return 0;
+  const diff = now - dueAt;
+  const days = Math.floor(diff / DAY_MS);
+  return Math.max(1, days);
+}
+
+export function formatDaysOverdue(dueAt: number, now: number = Date.now()): string {
+  const days = daysOverdue(dueAt, now);
+  return `Overdue by ${days} ${days === 1 ? "day" : "days"}`;
 }
 
 // ── Getting started ─────────────────────────────────────────────────────────

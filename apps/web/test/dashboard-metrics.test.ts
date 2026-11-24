@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
-import type { PaymentLink } from "../lib/api";
+import type { InvoiceStatus, PaymentLink } from "../lib/api";
 import {
   awaitingPayment,
   dailySeries,
+  daysOverdue,
   filterCounts,
+  formatDaysOverdue,
   formatDollars,
   formatFiat,
   formatLinkAmount,
   humanStatus,
+  invoiceFilterCounts,
   matchesFilter,
+  matchesInvoiceFilter,
   rangeStart,
   readyToCashOut,
   relativeTime,
@@ -185,6 +189,48 @@ describe("filters", () => {
     expect(filterCounts(set)).toEqual({ all: 7, waiting: 2, paid: 1, cashout: 2, closed: 2 });
     expect(matchesFilter({ status: "offramp_failed" }, "cashout")).toBe(true);
     expect(matchesFilter({ status: "paid" }, "waiting")).toBe(false);
+  });
+});
+
+describe("invoice filters (issue 5.54)", () => {
+  const set: { status: InvoiceStatus }[] = [
+    { status: "draft" },
+    { status: "draft" },
+    { status: "open" },
+    { status: "overdue" },
+    { status: "paid" },
+    { status: "paid" },
+    { status: "void" },
+  ];
+
+  it("calculates correct counts for each invoice filter", () => {
+    expect(invoiceFilterCounts(set)).toEqual({
+      all: 7,
+      draft: 2,
+      open: 1,
+      overdue: 1,
+      paid: 2,
+      void: 1,
+    });
+  });
+
+  it("matches filter correctly", () => {
+    expect(matchesInvoiceFilter({ status: "draft" }, "all")).toBe(true);
+    expect(matchesInvoiceFilter({ status: "draft" }, "draft")).toBe(true);
+    expect(matchesInvoiceFilter({ status: "draft" }, "open")).toBe(false);
+    expect(matchesInvoiceFilter({ status: "overdue" }, "overdue")).toBe(true);
+    expect(matchesInvoiceFilter({ status: "overdue" }, "open")).toBe(false);
+    expect(matchesInvoiceFilter({ status: "paid" }, "paid")).toBe(true);
+    expect(matchesInvoiceFilter({ status: "void" }, "void")).toBe(true);
+  });
+
+  it("calculates days overdue and formats human string", () => {
+    expect(daysOverdue(NOW + DAY, NOW)).toBe(0);
+    expect(daysOverdue(NOW, NOW)).toBe(0);
+    expect(daysOverdue(NOW - DAY, NOW)).toBe(1);
+    expect(daysOverdue(NOW - 3 * DAY, NOW)).toBe(3);
+    expect(formatDaysOverdue(NOW - DAY, NOW)).toBe("Overdue by 1 day");
+    expect(formatDaysOverdue(NOW - 3 * DAY, NOW)).toBe("Overdue by 3 days");
   });
 });
 

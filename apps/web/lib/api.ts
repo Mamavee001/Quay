@@ -112,6 +112,27 @@ export interface PublicInvoice {
   updatedAt?: number;
 }
 
+export interface Invoice {
+  id: string;
+  sellerId?: string;
+  number: string | null;
+  clientName: string;
+  clientEmail?: string | null;
+  clientAddress?: string | null;
+  lineItems: InvoiceLineItem[];
+  total: string;
+  asset?: string | { code: string; issuer?: string | null };
+  assetCode?: string;
+  issuedAt: number | null;
+  dueAt: number;
+  status: InvoiceStatus;
+  linkId: string | null;
+  notes?: string | null;
+  reference?: string | null;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 export interface AnchorAuthView {
   /** False when the deployment has no real anchor (mock / none). */
   required: boolean;
@@ -596,6 +617,11 @@ export const api = {
   getReceipt: (reference: string) => http<PublicReceipt>(`/r/${reference}`),
 
   getPublicInvoice: (id: string) => http<PublicInvoice>(`/invoices/${id}/public`),
+
+  listInvoices: (status?: InvoiceStatus | "all" | string) =>
+    http<{ invoices: Invoice[] }>(
+      `/invoices${status && status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`,
+    ),
 
   /** Indicative SEP-38 prices for a paid link — no firm quote is consumed. */
   getOfframpPreview: (id: string, currency?: string) =>
